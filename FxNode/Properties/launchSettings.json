@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "FxNode": {
+      "commandName": "Project"
+    },
+    "FxNode - Test 1": {
+      "commandName": "Project",
+      "commandLineArgs": "--profile C:/fxManager/node1/profile",
+      "hotReloadEnabled": false
+    }
+  }
+}

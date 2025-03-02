@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>e0d0e7fc-ef31-4295-9425-0cbdd9abbe91</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>FxSocket</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)FxKeyAuth.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)HubSocket\HubSocket.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)hubsocket\NodeEventPool.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Payloads\AuthChallenge.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)NodeSocket\*.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)payloads\frames\HeartbeatFrame.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Payloads\NodeAttachRequest.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Payloads\Frames\SocketFrame.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Payloads\SocketPayload.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Payloads\Frames\" />
+  </ItemGroup>
+</Project>

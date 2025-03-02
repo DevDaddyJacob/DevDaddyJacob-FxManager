@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects Condition="'$(MSBuildVersion)' == '' Or '$(MSBuildVersion)' &lt; '16.0'">$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>322a44e2-ebcc-4b28-b9f6-1679a3d8d3a6</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>FxShared</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)logger\AppLogger.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Logger\Old\OldAppLogger.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)logger\BaseLogger.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Logger\Old\FileLogger.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)logger\LogLevel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utils.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="$(MSBuildThisFileDirectory)Logger\Old\" />
+  </ItemGroup>
+</Project>

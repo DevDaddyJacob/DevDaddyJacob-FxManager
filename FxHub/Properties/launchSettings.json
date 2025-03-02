@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "FxHub": {
+      "commandName": "Project"
+    },
+    "FxHub - Test 1": {
+      "commandName": "Project",
+      "commandLineArgs": "--config C:/fxManager/hub/config.json",
+      "hotReloadEnabled": false
+    }
+  }
+}

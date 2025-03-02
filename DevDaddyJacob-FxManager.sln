@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35728.132
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FxNode", "FxNode\FxNode.csproj", "{EEDF960B-694F-4826-8939-DCA40DCE96C9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FxHub", "FxHub\FxHub.csproj", "{EB4A1BE6-12CB-4C0D-A1A5-4808388C4B05}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "FxSocket", "FxSocket\FxSocket.shproj", "{E0D0E7FC-EF31-4295-9425-0CBDD9ABBE91}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "FxShared", "FxShared\FxShared.shproj", "{322A44E2-EBCC-4B28-B9F6-1679A3D8D3A6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EEDF960B-694F-4826-8939-DCA40DCE96C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EEDF960B-694F-4826-8939-DCA40DCE96C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EEDF960B-694F-4826-8939-DCA40DCE96C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EEDF960B-694F-4826-8939-DCA40DCE96C9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB4A1BE6-12CB-4C0D-A1A5-4808388C4B05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB4A1BE6-12CB-4C0D-A1A5-4808388C4B05}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB4A1BE6-12CB-4C0D-A1A5-4808388C4B05}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB4A1BE6-12CB-4C0D-A1A5-4808388C4B05}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		FxShared\FxShared.projitems*{322a44e2-ebcc-4b28-b9f6-1679a3d8d3a6}*SharedItemsImports = 13
+		FxSocket\FxSocket.projitems*{e0d0e7fc-ef31-4295-9425-0cbdd9abbe91}*SharedItemsImports = 13
+		FxShared\FxShared.projitems*{eb4a1be6-12cb-4c0d-a1a5-4808388c4b05}*SharedItemsImports = 5
+		FxSocket\FxSocket.projitems*{eb4a1be6-12cb-4c0d-a1a5-4808388c4b05}*SharedItemsImports = 5
+		FxShared\FxShared.projitems*{eedf960b-694f-4826-8939-dca40dce96c9}*SharedItemsImports = 5
+		FxSocket\FxSocket.projitems*{eedf960b-694f-4826-8939-dca40dce96c9}*SharedItemsImports = 5
+	EndGlobalSection
+EndGlobal
