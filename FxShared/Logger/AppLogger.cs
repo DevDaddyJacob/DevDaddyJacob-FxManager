@@ -1,4 +1,4 @@
-namespace DevDaddyJacob.FxShared.Logger
+namespace DevDaddyJacob.FxManager.Shared.Logger
 {
     internal class AppLogger : BaseLogger
     {

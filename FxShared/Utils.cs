@@ -1,9 +1,9 @@
-using DevDaddyJacob.FxShared.Logger;
+using DevDaddyJacob.FxManager.Shared.Logger;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace DevDaddyJacob.FxShared
+namespace DevDaddyJacob.FxManager.Shared
 {
     internal static class Utils
     {

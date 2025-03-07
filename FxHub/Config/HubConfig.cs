@@ -1,7 +1,7 @@
-﻿using DevDaddyJacob.FxHub.Config.Models;
+﻿using DevDaddyJacob.FxManager.Hub.Config.Models;
 using Newtonsoft.Json;
 
-namespace DevDaddyJacob.FxHub.Config
+namespace DevDaddyJacob.FxManager.Hub.Config
 {
     internal class HubConfig
     {
@@ -53,7 +53,9 @@ namespace DevDaddyJacob.FxHub.Config
             using (StreamReader reader = new StreamReader(configFilePath))
             {
                 string fileContent = reader.ReadToEnd();
+#pragma warning disable CS8603 // Possible null reference return.
                 return JsonConvert.DeserializeObject<ConfigFile>(fileContent);
+#pragma warning restore CS8603 // Possible null reference return.
             }
         }
 

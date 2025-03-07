@@ -1,7 +1,7 @@
-﻿using DevDaddyJacob.FxNode.Config.Models;
+﻿using DevDaddyJacob.FxManager.Node.Config.Models;
 using Newtonsoft.Json;
 
-namespace DevDaddyJacob.FxNode.Config
+namespace DevDaddyJacob.FxManager.Node.Config
 {
     internal class NodeConfig
     {
@@ -53,7 +53,9 @@ namespace DevDaddyJacob.FxNode.Config
             using (StreamReader reader = new StreamReader(configFilePath))
             {
                 string fileContent = reader.ReadToEnd();
+#pragma warning disable CS8603 // Possible null reference return.
                 return JsonConvert.DeserializeObject<ConfigFile>(fileContent);
+#pragma warning restore CS8603 // Possible null reference return.
             }
         }
 

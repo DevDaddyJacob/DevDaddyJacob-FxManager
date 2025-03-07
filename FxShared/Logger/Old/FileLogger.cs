@@ -2,7 +2,7 @@
 //using System.IO;
 //using System.Text;
 
-//namespace DevDaddyJacob.FxShared.Logger
+//namespace DevDaddyJacob.FxManager.Shared.Logger
 //{
 //    internal delegate void OnLoggerWriteLine(string line);
 

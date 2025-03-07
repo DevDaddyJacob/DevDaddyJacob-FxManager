@@ -1,32 +1,33 @@
 #if IS_FX_HUB
 
-using DevDaddyJacob.FxHub;
-using DevDaddyJacob.FxHub.Config;
-using DevDaddyJacob.FxHub.Config.Models;
-using DevDaddyJacob.FxShared;
-using DevDaddyJacob.FxSocket.Payloads;
-using DevDaddyJacob.FxSocket.Payloads.Frames;
-using MessagePack;
+using DevDaddyJacob.FxManager.Hub;
+using DevDaddyJacob.FxManager.Hub.Config;
+using DevDaddyJacob.FxManager.Hub.Config.Models;
+using DevDaddyJacob.FxManager.Socket.Payloads;
+using DevDaddyJacob.FxManager.Socket.Payloads.General;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
+using System.Xml.Linq;
 
-namespace DevDaddyJacob.FxSocket.Hub
+namespace DevDaddyJacob.FxManager.Socket.Hub
 {
-    internal class HubSocket
+    internal class HubSocket : FxSocket
     {
         #region Fields
 
         private FxKeyAuth _keyAuth;
         private HubConfig _config;
+        private HttpListener? _listener = null;
         private ConcurrentDictionary<string, FxKeyAuth> _nodeEncrypters = new();
-        private ConcurrentDictionary<string, WebSocket> _socketNodeMapping = new();
         private ConcurrentDictionary<string, NodeEventPool> _nodeEventPools = new();
 
-        private CancellationTokenSource? _listenerCancel = null;
-        private Thread? _listenerThread = null;
-        private HttpListener? _listener = null;
+        private ConcurrentDictionary<WebSocket, string> _socketNodeLabel = new();
+        private ConcurrentDictionary<WebSocket, HttpListenerContext> _socketContext = new();
+        private ConcurrentDictionary<WebSocket, bool> _socketAuthStatus = new();
+        private ConcurrentDictionary<WebSocket, Thread> _socketThread = new();
+        private ConcurrentDictionary<WebSocket, CancellationTokenSource> _socketCancel = new();
 
         #endregion Fields
 
@@ -64,68 +65,46 @@ namespace DevDaddyJacob.FxSocket.Hub
 
         #region Public Methods
 
-        public void StartSocket()
+        public override async void Start()
         {
             // Check if there is already an existing socket open
-            Program.Logger.Debug($"Trying to start socket");
+            FxHub.Logger.Debug($"Trying to start socket");
             if (_listener != null) { return; }
 
 
             // Create the http listener and other variables
-            Program.Logger.Debug($"Creating http listener at \"http://+:{_config.Socket.SocketPort}/\"");
-            _listenerCancel = new();
-            _listenerThread = new Thread(RunListener);
+            FxHub.Logger.Debug($"Creating http listener at \"http://+:{_config.Socket.SocketPort}/\"");
             _listener = new HttpListener();
             _listener.Prefixes.Add($"http://+:{_config.Socket.SocketPort}/");
 
 
             // Start the http listener
-            Program.Logger.Debug($"Starting listener");
+            FxHub.Logger.Debug($"Starting listener");
             try
             {
                 _listener.Start();
-                _listenerThread.Start();
             }
             catch (HttpListenerException ex)
             {
                 if (ex.Message.Equals("Access is denied."))
                 {
-                    Program.Logger.Alert(ex);
-                    Program.Logger.Alert("Use the following command in a command prompt run as administrator to allow use of the websocket server:\n" +
+                    FxHub.Logger.Alert(ex);
+                    FxHub.Logger.Alert("Use the following command in a command prompt run as administrator to allow use of the websocket server:\n" +
                         $"netsh http add urlacl url=\"http://+:{_config.Socket.SocketPort}/\" user={System.Security.Principal.WindowsIdentity.GetCurrent().Name}\n");
                     return;
                 }
 
-                throw ex;
+                throw;
             }
-        }
 
-        #endregion Public Methods
 
-        #region Private Methods
-
-        private void Reset()
-        {
-            _listener = null;
-            _listenerCancel = null;
-            _listenerThread = null;
-        }
-
-        private async void RunListener()
-        {
-            Program.Logger.Debug($"Entering thread for \"RunListener\" (Managed Thread ID: {Thread.CurrentThread.ManagedThreadId})");
-
-            while (true)
+            // Handle the connections
+            while (_listener.IsListening)
             {
-                if (_listener == null) { break; }
-                if (_listenerCancel == null) { break; }
-                if (_listenerThread == null) { break; }
-                if (_listenerCancel.IsCancellationRequested) { break; }
-
                 HttpListenerContext context = await _listener.GetContextAsync();
                 if (context.Request.IsWebSocketRequest)
                 {
-                    ProcessSocketConnection(context);
+                    _ = ReceiveSocketConnection(context);
                 }
                 else
                 {
@@ -133,225 +112,132 @@ namespace DevDaddyJacob.FxSocket.Hub
                     context.Response.Close();
                 }
             }
-
-            Program.Logger.Debug($"Exiting thread for \"RunListener\" (Managed Thread ID: {Thread.CurrentThread.ManagedThreadId})");
         }
 
-        private async Task ProcessSocketConnection(HttpListenerContext context)
+        public Task SendAsync(string nodeLabel, SocketPayload message)
+        {
+            return Task.Run(() =>
+            {
+                // Pack the payload
+                byte[] packedMsg = PackPayload(message);
+
+
+                // Send the message to each applicable node
+                Task[] sendTasks = new Task[0];
+                foreach (KeyValuePair<WebSocket, string> entry in _socketNodeLabel)
+                {
+                    if (nodeLabel.Equals("*") || nodeLabel.Equals(entry.Value))
+                    {
+                        int index = sendTasks.Length;
+                        Array.Resize(ref sendTasks, index + 1);
+                        sendTasks[index] = Task.Run(async () =>
+                        {
+                            await entry.Key.SendAsync(new(packedMsg), WebSocketMessageType.Text, true, CancellationToken.None);
+                        });
+                    }
+                }
+
+                Task.WaitAll(sendTasks);
+            });
+        }
+
+        #endregion Public Methods
+
+        #region Private Methods
+
+        private void ResetSocket(WebSocket socket)
+        {
+            if (_socketCancel.TryRemove(socket, out CancellationTokenSource cancel))
+            {
+                cancel.Cancel();
+            }
+
+            _socketAuthStatus.TryRemove(socket, out _);
+            _socketThread.TryRemove(socket, out _);
+            _socketContext.TryRemove(socket, out _);
+        }
+
+        private async Task ReceiveSocketConnection(HttpListenerContext context)
         {
             HttpListenerWebSocketContext socketContext = await context.AcceptWebSocketAsync(null);
             WebSocket socket = socketContext.WebSocket;
+
+            _socketContext[socket] = context;
+            _socketAuthStatus[socket] = false;
+            _socketCancel[socket] = new();
+            _socketThread[socket] = new Thread(() => HandleSocket(socket));
+            _socketThread[socket].Start();
+        }
+
+        private async void HandleSocket(WebSocket socket)
+        {
+            if (!_socketContext.TryGetValue(socket, out HttpListenerContext? context)) { ResetSocket(socket); return; }
+            if (!_socketAuthStatus.TryGetValue(socket, out bool authStatus)) { ResetSocket(socket); return; }
+            if (!_socketCancel.TryGetValue(socket, out CancellationTokenSource? cancel)) { ResetSocket(socket); return; }
+
             byte[] buffer = new byte[1024];
-
-
-            // Await the attach request
-            WebSocketReceiveResult attachResult = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-            NodeAttachRequest attachRequest = UnpackMessage<NodeAttachRequest>(Encoding.UTF8.GetString(buffer, 0, attachResult.Count));
-
-            bool isLabelValid = false;
-            foreach (KeyValuePair<string, FxKeyAuth> entry in _nodeEncrypters)
+            FxHub.Logger.Info($"Listening for messages from node at {context.Request.RemoteEndPoint}");
+            while (socket.State == WebSocketState.Open && !cancel.IsCancellationRequested)
             {
-                if (entry.Key.Equals(attachRequest.NodeLabel))
+                Tuple<SocketMessageType, byte[]>? msgData = await NextMessage(socket);
+                if (msgData == null)
                 {
-                    isLabelValid = true;
-                    break;
+                    FxHub.Logger.Debug($"[NodeSocket:{context.Request.RemoteEndPoint}] Received Message: null");
+                    continue;
                 }
+
+                SocketPayload payload = UnpackPayload(msgData.Item2);
+                await ProcessFrame(socket, payload);
             }
 
-            if (!isLabelValid)
+            ResetSocket(socket);
+        }
+
+        private async Task ProcessFrame(WebSocket socket, SocketPayload frame)
+        {
+            if (!_socketAuthStatus.TryGetValue(socket, out bool authStatus)) { return; }
+            FxHub.Logger.Debug($"Processing frame with event: '{frame.Event}'");
+
+            // Check if we have yet to auth and handle the frame
+            if (!authStatus)
             {
-                await socket.CloseAsync(WebSocketCloseStatus.InvalidPayloadData, $"Auth Failed - Stage 1 (label='{attachRequest.NodeLabel}')", CancellationToken.None);
-                return;
-            }
-
-            _socketNodeMapping[attachRequest.NodeLabel] = socket;
-
-
-            // Listen for messages
-            string label = attachRequest.NodeLabel;
-            _nodeEventPools[label] = new(label);
-            
-            Program.Logger.Info($"Handshake with node '{label}' complete, listening for messages");
-            while (socket.State == WebSocketState.Open)
-            {
-                WebSocketReceiveResult result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                if (result.MessageType == WebSocketMessageType.Text)
+                if (frame.Event.Equals("NodeAttachFrame"))
                 {
-                    string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    Program.Logger.Debug($"[NodeSocket:{label}] {message}");
-                    SocketFrame frame;
-                    try
+                    NodeAttachFrame attachFrame = (NodeAttachFrame)frame;
+
+                    bool isLabelValid = false;
+                    foreach (KeyValuePair<string, FxKeyAuth> entry in _nodeEncrypters)
                     {
-                        frame = UnpackMessage<SocketFrame>(message);
-                    }
-                    catch (Exception ex)
-                    {
-                        Program.Logger.Error(ex.Message);
-                        Program.Logger.Error(ex.InnerException);
-                        Program.Logger.Error(ex.Source);
-                        Program.Logger.Error(ex.StackTrace);
-                        continue;
+                        if (entry.Key.Equals(attachFrame.NodeLabel))
+                        {
+                            isLabelValid = true;
+                            break;
+                        }
                     }
 
-                    _nodeEventPools[label]?.InvokeFrame(frame);
+                    if (!isLabelValid)
+                    {
+                        await socket.CloseAsync(WebSocketCloseStatus.InvalidPayloadData, $"No Such Node Label! (label='{attachFrame.NodeLabel}')", CancellationToken.None);
+                        ResetSocket(socket);
+                        return;
+                    }
+
+                    _socketAuthStatus[socket] = true;
+                    _socketNodeLabel[socket] = attachFrame.NodeLabel;
                 }
-                else if (result.MessageType == WebSocketMessageType.Close)
+                else
                 {
                     await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                    ResetSocket(socket);
                 }
-            }
 
-
-            // Handle closing
-            _nodeEventPools.TryRemove(label, out _);
-        }
-
-        // C->S     Connect
-        // C->S     Send attach request
-        // S->C     Parse request, validate, and send challenge
-        // C->S     Decrypt challenge, re-encrypt it, and return it
-        // S->C     Decrypt challenge and return results
-        private async Task ProcessSocketConnection2(HttpListenerContext context)
-        {
-            HttpListenerWebSocketContext socketContext = await context.AcceptWebSocketAsync(null);
-            WebSocket socket = socketContext.WebSocket;
-            byte[] buffer = new byte[1024];
-
-
-            // Track the socket's source
-            Program.Logger.Info($"Received socket connection from endpoint: {context.Request.RemoteEndPoint}");
-            Program.Logger.Debug($"Context info: {context.Request.RemoteEndPoint}");
-
-
-            // Await the attach request
-            buffer = new byte[1024];
-            WebSocketReceiveResult attachResult = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-            NodeAttachRequest attachRequest = MessagePackSerializer.Deserialize<NodeAttachRequest>(MessagePackSerializer.ConvertFromJson(Encoding.UTF8.GetString(buffer, 0, attachResult.Count)));
-
-            bool isLabelValid = false;
-            foreach (KeyValuePair<string, FxKeyAuth> entry in _nodeEncrypters)
-            {
-                if (entry.Key.Equals(attachRequest.NodeLabel))
-                {
-                    isLabelValid = true;
-                    break;
-                }
-            }
-
-            if (!isLabelValid)
-            {
-                await socket.CloseAsync(WebSocketCloseStatus.InvalidPayloadData, $"Auth Failed - Stage 1 (label='{attachRequest.NodeLabel}')", CancellationToken.None);
-                return;
-            }
-
-            _socketNodeMapping[attachRequest.NodeLabel] = socket;
-
-
-            // Generate and send the challenge
-            string challenge = Utils.GetUniqueKey(32);
-            try
-            {
-                AuthChallenge serverChallenge = new AuthChallenge() { IsSolving = false, Challenge = challenge };
-                string? packedChallengePayload = PackMessage(serverChallenge, _nodeEncrypters[attachRequest.NodeLabel]);
-                if (packedChallengePayload == null) { return; }
-                await socket.SendAsync(new(Encoding.UTF8.GetBytes(packedChallengePayload)), WebSocketMessageType.Text, true, CancellationToken.None);
-            }
-            catch
-            {
-                await socket.CloseAsync(WebSocketCloseStatus.Empty, "Auth Failed - Stage 2", CancellationToken.None);
                 return;
             }
 
 
-            // Await the solved challenge
-            try
-            {
-                buffer = new byte[1024];
-                WebSocketReceiveResult solveResult = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                AuthChallenge solveChallenge = UnpackMessage<AuthChallenge>(Encoding.UTF8.GetString(buffer, 0, attachResult.Count));
-                if (!solveChallenge.IsSolving || !solveChallenge.Challenge.Equals(challenge))
-                {
-                    await socket.CloseAsync(WebSocketCloseStatus.InvalidPayloadData, "Bad auth challenge solve", CancellationToken.None);
-                    return;
-                }
-            }
-            catch
-            {
-                await socket.CloseAsync(WebSocketCloseStatus.Empty, "Auth Failed - Stage 3", CancellationToken.None);
-                return;
-            }
+            if (!_socketNodeLabel.TryGetValue(socket, out string? label)) { return; }
 
-
-            // Send the auth challenge 'ok'
-            try
-            {
-                AuthChallenge challengeOk = new AuthChallenge() { IsSolving = true, Challenge = "Handshake Complete, Auth Ok!" };
-                string? packedChallengeOkPayload = PackMessage(challengeOk, _nodeEncrypters[attachRequest.NodeLabel]);
-                if (packedChallengeOkPayload == null) { return; }
-                await socket.SendAsync(new(Encoding.UTF8.GetBytes(packedChallengeOkPayload)), WebSocketMessageType.Text, true, CancellationToken.None);
-            }
-            catch
-            {
-                await socket.CloseAsync(WebSocketCloseStatus.Empty, "Auth Failed - Stage 4", CancellationToken.None);
-                return;
-            }
-
-
-            // Listen for messages
-            string label = attachRequest.NodeLabel;
-            Program.Logger.Info($"Handshake with node '{label}' complete, listening for messages");
-            _nodeEventPools[label] = new(label);
-            while (socket.State == WebSocketState.Open)
-            {
-                WebSocketReceiveResult result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                if (result.MessageType == WebSocketMessageType.Text)
-                {
-                    string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    SocketFrame frame;
-                    try
-                    {
-                        frame = UnpackMessage<SocketFrame>(message);
-                    }
-                    catch (Exception ex)
-                    {
-                        continue;
-                    }
-                    
-                    _nodeEventPools[label]?.InvokeFrame(frame);
-                }
-                else if (result.MessageType == WebSocketMessageType.Close)
-                {
-                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                }
-            }
-
-
-            // Handle closing
-            _nodeEventPools.TryRemove(label, out _);
-        }
-
-        private string? PackMessage<T>(T message, FxKeyAuth auth)
-        {
-            byte[] serializedMsg = MessagePackSerializer.Serialize(message);
-            string? encryptedMsg = auth.Encrypt(serializedMsg);
-            return encryptedMsg;
-        }
-
-        private string? PackMessage<T>(T message)
-        {
-            return PackMessage(message, _keyAuth);
-        }
-
-        private T UnpackMessage<T>(string message, FxKeyAuth auth)
-        {
-            byte[]? decryptedMsg = auth.Decrypt(message);
-            T deserializedMsg = MessagePackSerializer.Deserialize<T>(decryptedMsg);
-            return deserializedMsg;
-        }
-
-        private T UnpackMessage<T>(string message)
-        {
-            return UnpackMessage<T>(message, _keyAuth);
+            _nodeEventPools[label]?.InvokeFrame(frame);
         }
 
         #endregion Private Methods

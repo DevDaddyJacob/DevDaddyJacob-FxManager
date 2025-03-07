@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Reflection.Emit;
 
-namespace DevDaddyJacob.FxShared.Logger
+namespace DevDaddyJacob.FxManager.Shared.Logger
 {
     internal abstract class BaseLogger
     {

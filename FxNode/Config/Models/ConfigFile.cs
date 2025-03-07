@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace DevDaddyJacob.FxNode.Config.Models
+namespace DevDaddyJacob.FxManager.Node.Config.Models
 {
     [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
     internal class ConfigFile

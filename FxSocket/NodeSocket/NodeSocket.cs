@@ -1,17 +1,16 @@
 #if IS_FX_NODE
 
-using DevDaddyJacob.FxNode;
-using DevDaddyJacob.FxNode.Config;
-using DevDaddyJacob.FxSocket.Payloads;
-using DevDaddyJacob.FxSocket.Payloads.Frames;
-using MessagePack;
-using System;
+using DevDaddyJacob.FxManager.Node;
+using DevDaddyJacob.FxManager.Node.Config;
+using DevDaddyJacob.FxManager.Shared.Logger;
+using DevDaddyJacob.FxManager.Socket.Payloads;
+using DevDaddyJacob.FxManager.Socket.Payloads.General;
 using System.Net.WebSockets;
 using System.Text;
 
-namespace DevDaddyJacob.FxSocket.Node
+namespace DevDaddyJacob.FxManager.Socket.Node
 {
-    internal class NodeSocket
+    internal class NodeSocket : FxSocket
     {
         #region Fields
 
@@ -33,12 +32,7 @@ namespace DevDaddyJacob.FxSocket.Node
 
         #region Public Methods
 
-        // C->S     Connect
-        // C->S     Send attach request
-        // S->C     Parse request, validate, and send challenge
-        // C->S     Decrypt challenge, re-encrypt it, and return it
-        // S->C     Decrypt challenge and return results
-        public async void ConnectToHub2()
+        public override async void Start()
         {
             // If there is already an existing socket open
             if (_socketClient != null && _socketClient.State == WebSocketState.Open) { return; }
@@ -46,240 +40,88 @@ namespace DevDaddyJacob.FxSocket.Node
 
 
             // Establish a connection
-            Program.Logger.Info($"Establishing connection to hub socket");
-            await _socketClient.ConnectAsync(new Uri($"ws://{_config.Hub.SocketAddress}:{_config.Hub.SocketPort}"), CancellationToken.None);
-            Program.Logger.Info($"Starting auth handshake...");
-
-
-            // Send the attach request
-            try
-            {
-                Program.Logger.Debug($"Packing payload data");
-
-                NodeAttachRequest payload = new() { NodeLabel = _config.Label };
-                string serializedPayload = MessagePackSerializer.SerializeToJson(payload);
-                if (serializedPayload.Length == 0) { throw new Exception("Failed to serialize and payload data"); }
-
-                Program.Logger.Debug($"Sending payload data");
-                await _socketClient.SendAsync(new(Encoding.UTF8.GetBytes(serializedPayload)), WebSocketMessageType.Text, true, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                Program.Logger.Info($"Auth handshake failed");
-                Program.Logger.Error(ex);
-                return;
-            }
-
-
-            // Await the server's challenge
-            string challengeStr = string.Empty;
-            try
-            {
-                Program.Logger.Debug($"Awaiting server challenge");
-
-                byte[] _buffer = new byte[1024];
-                WebSocketReceiveResult result = await _socketClient.ReceiveAsync(new ArraySegment<byte>(_buffer), CancellationToken.None);
-                string resultMsg = Encoding.UTF8.GetString(_buffer, 0, result.Count);
-
-                Program.Logger.Debug($"Unpacking server message: \"{resultMsg}\"");
-                AuthChallenge serverChallenge = UnpackMessage<AuthChallenge>(resultMsg);
-
-                Program.Logger.Debug($"Unpacked: challenge={serverChallenge.Challenge}");
-                challengeStr = serverChallenge.Challenge;
-            }
-            catch (Exception ex)
-            {
-                Program.Logger.Info($"Auth handshake failed");
-                Program.Logger.Error(ex);
-                return;
-            }
-
-
-            // Send the solved challenge
-            try
-            {
-                Program.Logger.Debug($"Packing payload data");
-
-                AuthChallenge payload = new() { IsSolving = true, Challenge = challengeStr };
-                string? serializedPayload = PackMessage(payload);
-                if (serializedPayload == null) { throw new Exception("Failed to serialize and pack payload data"); }
-
-                Program.Logger.Debug($"Sending auth solve payload data");
-                await _socketClient.SendAsync(new(Encoding.UTF8.GetBytes(serializedPayload)), WebSocketMessageType.Text, true, CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                Program.Logger.Info($"Auth handshake failed");
-                Program.Logger.Error(ex);
-                return;
-            }
-
-
-            // Await the server's approval
-            try
-            {
-                Program.Logger.Debug($"Awaiting server challenge result");
-
-                byte[] _buffer = new byte[1024];
-                WebSocketReceiveResult result = await _socketClient.ReceiveAsync(new ArraySegment<byte>(_buffer), CancellationToken.None);
-                string resultMsg = Encoding.UTF8.GetString(_buffer, 0, result.Count);
-
-                Program.Logger.Debug($"Unpacking server message: \"{resultMsg}\"");
-                AuthChallenge authChallenge = UnpackMessage<AuthChallenge>(resultMsg);
-
-                if (!authChallenge.Challenge.Equals("Handshake Complete, Auth Ok!"))
-                {
-                    await _socketClient.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                    return;
-                }
-            }
-            catch (Exception ex)
-            {
-                Program.Logger.Info($"Auth handshake failed");
-                Program.Logger.Error(ex);
-                return;
-            }
-
-
-            // Listen for messages
-            Program.Logger.Info("Auth handshake with server complete, listening for messages");
-            byte[] buffer = new byte[1024];
-            while (_socketClient.State == WebSocketState.Open)
-            {
-                WebSocketReceiveResult result = await _socketClient.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                if (result.MessageType == WebSocketMessageType.Text)
-                {
-                    string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    SocketFrame frame;
-                    try
-                    {
-                        frame = UnpackMessage<SocketFrame>(message);
-                    }
-                    catch (Exception ex)
-                    {
-                        continue;
-                    }
-
-                    await ProcessFrame(frame);
-                }
-            }
-
-            return;
-        }
-
-        public async void ConnectToHub()
-        {
-            // If there is already an existing socket open
-            if (_socketClient != null && _socketClient.State == WebSocketState.Open) { return; }
-            _socketClient = new ClientWebSocket();
-
-
-            // Establish a connection
-            Program.Logger.Info($"Establishing connection to hub socket");
+            FxNode.Logger.Info($"Establishing connection to hub socket");
             await _socketClient.ConnectAsync(new Uri($"ws://{_config.Hub.SocketAddress}:{_config.Hub.SocketPort}"), CancellationToken.None);
 
 
             // Send the attach request
             try
             {
-                await SendMessage(new NodeAttachRequest() 
-                { 
-                    NodeLabel = _config.Label 
+                await SendMessage(new NodeAttachFrame()
+                {
+                    NodeLabel = _config.Label
                 });
             }
             catch (Exception ex)
             {
-                Program.Logger.Error(ex);
+                FxNode.Logger.Error(ex);
                 return;
             }
 
 
             // Listen for messages
-            Program.Logger.Info("Handshake with server complete, listening for messages");
-            byte[] buffer = new byte[1024];
+            FxNode.Logger.Info("Listening for messages from hub");
             while (_socketClient.State == WebSocketState.Open)
             {
-                WebSocketReceiveResult result = await _socketClient.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-                if (result.MessageType == WebSocketMessageType.Text)
+                Tuple<SocketMessageType, byte[]>? msgData = await NextMessage(_socketClient);
+                if (msgData == null)
                 {
-                    string message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    Program.Logger.Debug($"[HubSocket] {message}");
-                    SocketFrame frame;
-                    try
-                    {
-                        frame = UnpackMessage<SocketFrame>(message);
-                    }
-                    catch (Exception ex)
-                    {
-                        continue;
-                    }
-
-                    await ProcessFrame(frame);
+                    FxNode.Logger.Debug($"[HubSocket] Received Message: null");
+                    continue;
                 }
+
+                SocketPayload payload = UnpackPayload(msgData.Item2);
+                await ProcessFrame(payload);
             }
 
-            return;
+            FxNode.Exit("FxHub terminated socket connection!", LogLevel.Critical);
         }
 
         #endregion Public Methods
 
         #region Private Methods
 
-        //private async Task<WebSocketReceiveResult> AwaitNextTextMessage(ClientWebSocket socket)
+        private async Task ProcessFrame(SocketPayload frame)
+        {
+
+        }
+
+        //private async Task<string?> NextMessage()
         //{
-        //    WebSocketReceiveResult? result = null;
+        //    if (_socketClient == null || _socketClient.State == WebSocketState.Closed) { return null; }
+
         //    byte[] buffer = new byte[1024];
-
-        //    while (result == null)
+        //    while (_socketClient.State == WebSocketState.Open)
         //    {
-        //        result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
-
-        //        if (result.MessageType != WebSocketMessageType.Text)
+        //        try
         //        {
-        //            result = null;
+        //            WebSocketReceiveResult result = await _socketClient.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+
+        //            if (result.MessageType == WebSocketMessageType.Close)
+        //            {
+
+        //            }
+
+        //            if (result.MessageType == WebSocketMessageType.Text)
+        //            {
+        //                return Encoding.UTF8.GetString(buffer, 0, result.Count);
+        //            }
+        //        }
+        //        catch
+        //        {
+        //            return null;
         //        }
         //    }
 
-        //    return result;
+        //    return null;
         //}
 
-        private async Task ProcessFrame(SocketFrame frame)
-        {
-
-        }
-
-        public async Task SendMessage<T>(T message)
+        public async Task SendMessage(SocketPayload message)
         {
             if (_socketClient == null || _socketClient.State == WebSocketState.Closed) { return; }
 
-            string? packedMsg = PackMessage(message);
-            if (packedMsg == null) { return; }
-
-            await _socketClient.SendAsync(new(Encoding.UTF8.GetBytes(packedMsg)), WebSocketMessageType.Text, true, CancellationToken.None);
-        }
-
-        private string? PackMessage<T>(T message, FxKeyAuth auth)
-        {
-            byte[] serializedMsg = MessagePackSerializer.Serialize(message);
-            string? encryptedMsg = auth.Encrypt(serializedMsg);
-            return encryptedMsg;
-        }
-
-        private string? PackMessage<T>(T message)
-        {
-            return PackMessage(message, _keyAuth);
-        }
-
-        private T UnpackMessage<T>(string message, FxKeyAuth auth)
-        {
-            byte[]? decryptedMsg = auth.Decrypt(message);
-            T deserializedMsg = MessagePackSerializer.Deserialize<T>(decryptedMsg);
-            return deserializedMsg;
-        }
-
-        private T UnpackMessage<T>(string message)
-        {
-            return UnpackMessage<T>(message, _keyAuth);
+            byte[] packedMsg = PackPayload(message);
+            await _socketClient.SendAsync(new(packedMsg), WebSocketMessageType.Binary, true, CancellationToken.None);
         }
 
         #endregion Private Methods

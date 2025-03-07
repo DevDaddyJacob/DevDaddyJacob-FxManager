@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace DevDaddyJacob.FxHub.Config.Models
+namespace DevDaddyJacob.FxManager.Hub.Config.Models
 {
     [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
     internal class SocketConfig

@@ -1,10 +1,11 @@
 #if IS_FX_HUB
 
-using DevDaddyJacob.FxHub;
-using DevDaddyJacob.FxSocket.Payloads.Frames;
+using DevDaddyJacob.FxManager.Hub;
+using DevDaddyJacob.FxManager.Socket.Payloads;
+using DevDaddyJacob.FxManager.Socket.Payloads.General;
 using MessagePack;
 
-namespace DevDaddyJacob.FxSocket.Hub
+namespace DevDaddyJacob.FxManager.Socket.Hub
 {
     internal class NodeEventPool
     {
@@ -32,7 +33,9 @@ namespace DevDaddyJacob.FxSocket.Hub
 
         #region Constructors
 
+#pragma warning disable CS8618
         public NodeEventPool(string nodeLabel)
+#pragma warning restore CS8618
         {
             _nodeLabel = nodeLabel;
         }
@@ -41,12 +44,12 @@ namespace DevDaddyJacob.FxSocket.Hub
 
         #region Methods
 
-        public void InvokeFrame(SocketFrame frame)
+        public void InvokeFrame(SocketPayload frame)
         {
-            Program.Logger.Info($"[{_nodeLabel}:{frame.Event}] {MessagePackSerializer.SerializeToJson(frame)}");
-            switch (frame.Event)
+            FxHub.Logger.Info($"[{_nodeLabel}:{frame.Event}] {MessagePackSerializer.SerializeToJson(frame)}");
+            switch (frame)
             {
-                case "HeartbeatFrame": 
+                case HeartbeatFrame _frame:
                     _heartbeatEvent?.Invoke(); 
                     break;
                 

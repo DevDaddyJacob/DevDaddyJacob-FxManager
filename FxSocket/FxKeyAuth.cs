@@ -7,17 +7,17 @@ using Org.BouncyCastle.Security;
 
 #if IS_FX_NODE 
 
-using DevDaddyJacob.FxNode.Config;
+using DevDaddyJacob.FxManager.Node.Config;
 
 #endif
 
 #if IS_FX_HUB
 
-using DevDaddyJacob.FxHub.Config;
+using DevDaddyJacob.FxManager.Hub.Config;
 
 #endif
 
-namespace DevDaddyJacob.FxSocket
+namespace DevDaddyJacob.FxManager.Socket
 {
     // Commands to create RSA key pair:
     // ssh-keygen -t rsa -b 4096 -m PEM -f %USERPROFILE%/.ssh/KEY_NAME_HERE

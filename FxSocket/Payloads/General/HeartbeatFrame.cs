@@ -1,11 +1,11 @@
 using MessagePack;
 
-namespace DevDaddyJacob.FxSocket.Payloads.Frames
+namespace DevDaddyJacob.FxManager.Socket.Payloads.General
 {
     public delegate void OnHeartbeatFrame();
 
     [MessagePackObject]
-    public class HeartbeatFrame : SocketFrame
+    public class HeartbeatFrame : SocketPayload
     {
         [Key(1)]
         public override string Event { get; set; } = "HeartbeatFrame";

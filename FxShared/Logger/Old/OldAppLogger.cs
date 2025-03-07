@@ -1,6 +1,6 @@
 ﻿using System.IO;
 
-namespace DevDaddyJacob.FxShared.Logger
+namespace DevDaddyJacob.FxManager.Shared.Logger
 {
 
     internal static class OldAppLogger
@@ -69,7 +69,7 @@ namespace DevDaddyJacob.FxShared.Logger
         {
             if (IsDebug)
             {
-                InternalLog("DEBUG", value.ToString());
+                InternalLog("DEBUG", value?.ToString() ?? string.Empty);
             }
         }
 
@@ -90,7 +90,7 @@ namespace DevDaddyJacob.FxShared.Logger
             => InternalLog("LOG", message);
 
         public static void Log(object value)
-            => InternalLog("LOG", value.ToString());
+            => InternalLog("LOG", value?.ToString() ?? string.Empty);
 
         public static void Log(string format, params object[] args)
             => InternalLog("LOG", string.Format(format, args));
@@ -104,7 +104,7 @@ namespace DevDaddyJacob.FxShared.Logger
             => InternalLog("INFO", message);
 
         public static void Info(object value)
-            => InternalLog("INFO", value.ToString());
+            => InternalLog("INFO", value?.ToString() ?? string.Empty);
 
         public static void Info(string format, params object[] args)
             => InternalLog("INFO", string.Format(format, args));
@@ -118,7 +118,7 @@ namespace DevDaddyJacob.FxShared.Logger
             => InternalLog("WARN", message);
 
         public static void Warn(object value)
-            => InternalLog("WARN", value.ToString());
+            => InternalLog("WARN", value?.ToString() ?? string.Empty);
 
         public static void Warn(string format, params object[] args)
             => InternalLog("WARN", string.Format(format, args));
@@ -132,7 +132,7 @@ namespace DevDaddyJacob.FxShared.Logger
             => InternalLog("ERROR", message);
 
         public static void Error(object value)
-            => InternalLog("ERROR", value.ToString());
+            => InternalLog("ERROR", value?.ToString() ?? string.Empty);
 
         public static void Error(Exception exception)
             => InternalLog("ERROR", $"Exception: {exception.Message}\n{exception.StackTrace}");

@@ -9,17 +9,17 @@
     <Import_RootNamespace>FxSocket</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)SocketMessageType.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)FxKeyAuth.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)FxSocket.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)HubSocket\HubSocket.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)hubsocket\NodeEventPool.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Payloads\AuthChallenge.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)NodeSocket\*.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)payloads\frames\HeartbeatFrame.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Payloads\NodeAttachRequest.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)Payloads\Frames\SocketFrame.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)HubSocket\NodeEventPool.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)NodeSocket\NodeSocket.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Payloads\General\HeartbeatFrame.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Payloads\General\NodeAttachFrame.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Payloads\SocketPayload.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="$(MSBuildThisFileDirectory)Payloads\Frames\" />
+    <Folder Include="$(MSBuildThisFileDirectory)Payloads\General\" />
   </ItemGroup>
 </Project>
