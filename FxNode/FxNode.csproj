@@ -27,6 +27,10 @@
     <Folder Include="ServerResource\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\ActionResults\ActionResults.csproj" />
+  </ItemGroup>
+
   <Import Project="..\FxSocket\FxSocket.projitems" Label="Shared" />
 
   <Import Project="..\FxShared\FxShared.projitems" Label="Shared" />

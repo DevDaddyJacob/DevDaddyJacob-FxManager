@@ -9,6 +9,9 @@
     <Import_RootNamespace>FxShared</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)actionresults\ActionResultCodeFamily.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)actionresults\ResultCodes.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)actionresults\ActionResultCodeScope.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)logger\AppLogger.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Logger\Old\OldAppLogger.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)logger\BaseLogger.cs" />

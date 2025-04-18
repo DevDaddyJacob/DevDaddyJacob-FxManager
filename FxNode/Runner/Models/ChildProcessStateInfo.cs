@@ -1,6 +1,6 @@
 ﻿namespace DevDaddyJacob.FxManager.Node.Runner.Models
 {
-    internal class ChildProcessStateInfo
+    internal struct ChildProcessStateInfo
     {
         #region Input
 
